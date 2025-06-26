@@ -8,7 +8,7 @@ import joblib
 import re
 
 
-client = MongoClient('mongodb://localhost:27017/')
+client = MongoClient("mongodb://host.docker.internal:27017/")
 db = client['WAF-AI']
 collection = db['Queries']
 logs = db['RequestLogs']

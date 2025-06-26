@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo
+    container_name: mongo-db
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+
+  waf:
+    build: .
+    container_name: waf-backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+      - redis

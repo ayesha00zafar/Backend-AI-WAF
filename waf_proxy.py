@@ -4,11 +4,16 @@ from logger import log_request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import time
+import redis
+
+
+redis_client = redis.Redis(host='redis-server', port=6379)
 
 app = Flask(__name__)
 limiter = Limiter(
     get_remote_address,
     app=app,
+    storage_uri="redis://redis-server:6379",
     default_limits=["10 per minute"]
 )
 
@@ -27,8 +32,8 @@ def check_request():
         log_request(http_request, prediction)
 
         elapsed = (time.time() - start_time) 
-        print(f"⏱️ Request processed in {elapsed:.2f} ms")
-
+        print(f"Request processed in {elapsed:.2f} ms")
+                             
         if prediction == 1:
             return jsonify({'status': 'blocked', 'message': 'Malicious request detected'})
         else:
@@ -39,4 +44,5 @@ def check_request():
 
 if __name__ == '__main__':
     print("WAF Server is Running! Use POST /check to test queries.")
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
