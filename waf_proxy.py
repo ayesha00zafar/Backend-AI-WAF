@@ -5,18 +5,18 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import time
 import redis
+import os
 
-redis_client = redis.Redis(host='redis-server', port=6379)
+redis_client = redis.Redis.from_url(os.getenv("REDIS_URL"))
 
 app = Flask(__name__)
 
 limiter = Limiter(
     get_remote_address,
     app=app,
-    storage_uri="redis://redis-server:6379",
+    storage_uri=os.getenv("REDIS_URL"),
     default_limits=["10 per minute"]
 )
-
 
 @app.route('/', methods=['GET'])
 def home():
