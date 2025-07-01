@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import joblib
 import re
-
+import os
 
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client['WAF-AI']
