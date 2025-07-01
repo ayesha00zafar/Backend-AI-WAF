@@ -7,7 +7,8 @@ import time
 import redis
 import os
 
-redis_client = redis.Redis.from_url(os.getenv("REDIS_URL"))
+redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
+
 
 app = Flask(__name__)
 
@@ -65,6 +66,7 @@ def check_request():
 
 if __name__ == '__main__':
     print("WAF Server is Running! Use POST /check to test queries.")
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 8080))
+app.run(host="0.0.0.0", port=port)
 
 
