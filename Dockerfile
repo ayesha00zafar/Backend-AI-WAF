@@ -10,7 +10,7 @@ COPY . .
 
 EXPOSE 8080
 
-CMD gunicorn -w 4 -b 0.0.0.0:$PORT waf_proxy:app
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "waf_proxy:app"]
 
 
 
