@@ -8,6 +8,7 @@ import joblib
 import re
 import os
 
+print("MONGO_URI is:", os.getenv("MONGO_URI"))
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client['WAF-AI']
 collection = db['Queries']

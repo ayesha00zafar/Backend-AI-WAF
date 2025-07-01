@@ -9,6 +9,12 @@ import os
 
 redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
 
+try:
+    redis_client.ping()
+    print("✅ Redis connection successful")
+except Exception as e:
+    print("❌ Redis connection failed:", e)
+
 
 app = Flask(__name__)
 
