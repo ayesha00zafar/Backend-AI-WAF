@@ -1,18 +1,19 @@
-# ✅ 1. Use an official Python base image
+# Use a slim Python base image
 FROM python:3.10-slim
 
-# ✅ 2. Set the working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# ✅ 3. Copy everything from your local project into the container
+# Copy dependencies
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Copy the full app
 COPY . .
 
-# ✅ 4. Upgrade pip and install Python packages from requirements.txt
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Run with Gunicorn (production WSGI server)
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "waf_proxy:app"]
 
-# ✅ 5. Expose the port Flask will run on (5000)
-EXPOSE 5000
 
-# ✅ 6. Run your WAF backend
-CMD ["python", "waf_proxy.py"]
