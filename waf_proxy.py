@@ -4,10 +4,10 @@ load_dotenv()
 from flask import Flask, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import time
+from celery.result import AsyncResult
 import redis
 import os
-from worker import handle_request_task  
+from worker import handle_request_task
 
 app = Flask(__name__)
 
@@ -16,7 +16,6 @@ redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 try:
     redis_client = redis.Redis.from_url(redis_url)
     redis_client.ping()
-    print("Redis connection successful")
     limiter = Limiter(
         get_remote_address,
         app=app,
@@ -51,8 +50,7 @@ def check_request():
 
 @app.route('/result/<task_id>', methods=['GET'])
 def get_result(task_id):
-    from worker import app as celery_app
-    task_result = celery_app.AsyncResult(task_id)
+    task_result = AsyncResult(task_id)
 
     if task_result.state == 'PENDING':
         return jsonify({"status": "pending", "message": "Still processing..."})
@@ -68,7 +66,6 @@ def get_result(task_id):
         return jsonify({"status": task_result.state, "message": "Unknown error"}), 500
 
 if __name__ == '__main__':
-    print("Starting WAF Server! Visit http://localhost:8080 or POST to /check")
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
 
