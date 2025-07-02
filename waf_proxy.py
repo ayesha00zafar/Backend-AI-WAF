@@ -7,11 +7,9 @@ from flask_limiter.util import get_remote_address
 import time
 import redis
 import os
-
 from worker import handle_request_task  
 
 app = Flask(__name__)
-
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 
@@ -25,9 +23,7 @@ try:
         storage_uri=redis_url,
         default_limits=["10 per minute"]
     )
-except Exception as e:
-    print(f"Redis connection failed: {e}")
-    print("Using in-memory rate limiting (not recommended for production)")
+except Exception:
     limiter = Limiter(
         get_remote_address,
         app=app,
@@ -42,13 +38,9 @@ def home():
 @limiter.limit("10 per minute")
 def check_request():
     if not request.is_json:
-        return jsonify({
-            'status': 'error',
-            'message': 'No JSON provided'
-        }), 400
+        return jsonify({'status': 'error', 'message': 'No JSON provided'}), 400
 
     http_request = request.get_json()
-
     task = handle_request_task.delay(http_request)
 
     return jsonify({

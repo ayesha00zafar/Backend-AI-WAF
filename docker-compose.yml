@@ -38,22 +38,10 @@ services:
     networks:
       - waf-net
 
-  # Optional: Nginx reverse proxy setup
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: waf-nginx
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-  #   depends_on:
-  #     - waf
-  #   networks:
-  #     - waf-net
-
 networks:
   waf-net:
     driver: bridge
+
 
 
 

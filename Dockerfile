@@ -8,7 +8,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 EXPOSE 8080
 
-CMD ["python", "waf_proxy.py"]
+ENTRYPOINT ["bash", "-c"]
+CMD ["python waf_proxy.py"]
+
 
 
 

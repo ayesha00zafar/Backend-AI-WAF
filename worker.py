@@ -14,3 +14,4 @@ def handle_request_task(http_request):
     except Exception as e:
         print(f"Background task failed: {e}")
         return -1
+
