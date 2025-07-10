@@ -11,7 +11,8 @@ logs = None
 
 if mongo_uri:
     try:
-        client = MongoClient(mongo_uri, tls=True, serverSelectionTimeoutMS=5000)
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+
         db = client['WAF-AI']
         logs = db['RequestLogs']
         client.server_info()
