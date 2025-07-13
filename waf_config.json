@@ -1,0 +1,38 @@
+{
+  "block_threshold": 5,
+  "weights": {
+    "malicious_domain": 5,
+    "malicious_ip": 5,
+    "sensitive_endpoint": 3,
+    "sqli_url": 3,
+    "xss_url": 3,
+    "sqli_header": 2,
+    "xss_header": 2,
+    "sqli_body": 4,
+    "xss_body": 5
+  },
+  "rate_limit": {
+    "requests_per_minute": 60,
+    "block_duration_seconds": 300,
+    "rate_limit_score": 5
+  },
+  "malicious_domains": ["bad-domain.com", "evil.com"],
+  "malicious_ips": ["123.45.67.89", "10.0.0.66"],
+  "sensitive_endpoints": ["/admin", "/config", "/wp-admin", "/.env", "/phpmyadmin"],
+  "sqli_patterns": [
+    "(?i)\\bUNION\\b\\s+\\bSELECT\\b",
+    "(?i)\\bDROP\\b\\s+\\bTABLE\\b",
+    "(?i)\\bOR\\b\\s+['\"]?1['\"]?\\s*=\\s*['\"]?1",
+    "(?i)\\bSELECT\\b.+\\bFROM\\b",
+    "(?i)\\bINSERT\\b\\s+INTO\\b",
+    "(?i)\\bUPDATE\\b\\s+\\w+\\s+SET\\b",
+    "(?i)\\bDELETE\\b\\s+FROM\\b"
+  ],
+  "xss_patterns": [
+    "(?i)<script[^>]*>.*?</script>",
+    "(?i)on\\w+\\s*=\\s*['\"].*?['\"]",
+    "(?i)javascript:",
+    "(?i)<iframe[^>]*>",
+    "(?i)<img[^>]+onerror\\s*=.*?>"
+  ]
+} 
