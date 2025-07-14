@@ -1,19 +1,85 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# ========== ENVIRONMENT & SENSITIVE FILES ==========
+.env
+.env.*           # Variants like .env.local, .env.production
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
 
-# Virtual env
-venv/
-env/
+# ========== NODE & PACKAGE MANAGERS ==========
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json       # (optional – only if not using consistent installs)
 
-# OS files
+# ========== BUILD & COMPILED OUTPUT ==========
+dist/
+build/
+out/
+.next/
+.cache/
+.temp/
+.vite/
+.svelte-kit/
+.eslintcache
+
+# ========== FRONTEND GENERATED ==========
+*.log
+*.map
+*.bak
+*.tmp
+*.swp
+*.gz
+*.zip
+*.tar
+*.tgz
+
+# ========== OS / IDE / TOOLS ==========
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Logs or models
-*.log
-*.pkl
-*.h5
+# Cursor / VSCode / JetBrains
+.vscode/
+.idea/
+*.code-workspace
+
+# ========== TESTING / COVERAGE ==========
+coverage/
+.nyc_output/
+test-output/
+junit.xml
+
+# ========== PYTHON (if used) ==========
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
 *.sqlite3
+.Python
+db.sqlite3
+venv/
+env/
+ENV/
+
+# ========== DOCKER ==========
+*.pid
+docker-compose.override.yml
+.dockerignore
+Dockerfile.*
+
+# ========== MISC ==========
+*.iml
+*.sublime-workspace
+*.sublime-project
+*.orig
+*.rej
+*.rej.*
+
+# ========== GIT ==========
+.git/
+!.gitignore
