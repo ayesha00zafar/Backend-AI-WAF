@@ -4,6 +4,14 @@ import axios from 'axios';
 const ControlPanel = () => {
   const [proxyStatus, setProxyStatus] = useState('stopped');
   const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    method: 'GET',
+    url: '',
+    headers: '',
+    body: ''
+  });
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleProxyControl = async (action) => {
     setLoading(true);
@@ -53,6 +61,33 @@ const ControlPanel = () => {
     } catch (error) {
       console.error('Error exporting logs:', error);
       alert('Logs exported successfully! (demo)');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleTestSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setResult(null);
+    setError(null);
+    try {
+      // Prepare request data for backend
+      const reqData = {
+        Method: form.method,
+        URL: form.url,
+        content: form.body,
+        headers: form.headers ? JSON.parse(form.headers) : {}
+      };
+      const response = await axios.post('/check', reqData);
+      setResult(response.data.status);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error submitting request');
     } finally {
       setLoading(false);
     }
@@ -136,6 +171,45 @@ const ControlPanel = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Test Request Form */}
+      <div className="card">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Test a Request</h2>
+        <form onSubmit={handleTestSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Method</label>
+              <select name="method" value={form.method} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">URL</label>
+              <input type="text" name="url" value={form.url} onChange={handleInputChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="https://example.com/test" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Headers (JSON)</label>
+            <textarea name="headers" value={form.headers} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder='{"User-Agent": "test"}' rows={2} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Body</label>
+            <textarea name="body" value={form.body} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md" rows={3} />
+          </div>
+          <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Testing...' : 'Submit Test Request'}</button>
+        </form>
+        {result && (
+          <div className={`mt-4 p-3 rounded-lg text-white ${result === 'blocked' ? 'bg-danger-500' : 'bg-success-500'}`}>
+            {result === 'blocked' ? 'Blocked: Malicious request detected' : 'Allowed: Request is clean'}
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 p-3 rounded-lg bg-danger-500 text-white">{error}</div>
+        )}
       </div>
 
       {/* Control Buttons */}

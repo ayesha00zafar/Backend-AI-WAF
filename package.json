@@ -6,7 +6,7 @@
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.10.0",
+    "axios": "^1.6.7",
     "dotenv": "^17.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -16,10 +16,11 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "cross-env PORT=3000 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev:all": "concurrently \"python waf_proxy.py\" \"mitmdump -s proxy/waf_proxy.py -p 8082\" \"react-scripts start\""
   },
   "eslintConfig": {
     "extends": [
@@ -39,5 +40,9 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5000"
+  "proxy": "http://localhost:5000",
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3"
+  }
 }

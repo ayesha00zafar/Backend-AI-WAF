@@ -31,12 +31,14 @@ def log_request(http_request, prediction):
     method = http_request.get('Method', '')
     content = http_request.get('content', '')
     content_hash = hashlib.sha256(content.encode()).hexdigest()
+    attack_type = 'malicious' if prediction == 1 else 'normal'
 
     log_entry = {
         'URL': url,
         'Method': method,
         'content_hash': content_hash,
         'prediction': 'blocked' if prediction == 1 else 'allowed',
+        'attack_type': attack_type,
         'timestamp': datetime.utcnow()
     }
 
