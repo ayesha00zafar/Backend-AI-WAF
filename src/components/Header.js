@@ -1,6 +1,28 @@
 import React from 'react';
 
-const Header = () => {
+const Header = ({ connectionStatus = 'disconnected' }) => {
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return 'bg-green-500';
+      case 'error':
+        return 'bg-red-500';
+      default:
+        return 'bg-yellow-500';
+    }
+  };
+
+  const getStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return 'Connected';
+      case 'error':
+        return 'Connection Error';
+      default:
+        return 'Connecting...';
+    }
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="px-6 py-4">
@@ -8,8 +30,8 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             <h2 className="text-2xl font-bold text-gray-900">WAF Dashboard</h2>
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-600">System Online</span>
+              <div className={`w-2 h-2 ${getStatusColor()} rounded-full animate-pulse`}></div>
+              <span className="text-sm text-gray-600">{getStatusText()}</span>
             </div>
           </div>
           

@@ -12,15 +12,15 @@
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "recharts": "^2.8.0",
-    "socket.io-client": "^4.7.2",
+    "socket.io-client": "^4.8.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "cross-env PORT=3000 react-scripts start",
+    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "dev:all": "concurrently \"python waf_proxy.py\" \"mitmdump -s proxy/waf_proxy.py -p 8082\" \"react-scripts start\""
+    "dev:all": "concurrently \"python waf_proxy.py\" \"mitmdump -s proxy/waf_proxy.py --mode regular@8084\" \"react-scripts start\""
   },
   "eslintConfig": {
     "extends": [
@@ -42,7 +42,7 @@
   },
   "proxy": "http://localhost:5000",
   "devDependencies": {
-    "concurrently": "^8.2.0",
+    "concurrently": "^8.2.2",
     "cross-env": "^7.0.3"
   }
 }

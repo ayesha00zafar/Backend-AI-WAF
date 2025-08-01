@@ -1,199 +1,183 @@
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
-import json
-import csv
-import io
-from datetime import datetime, timedelta
-import random
+from flask_socketio import SocketIO
+from pymongo import MongoClient
+import os
+import eventlet
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize eventlet for WebSocket support
+eventlet.monkey_patch()
 
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
-# Mock data storage
-logs_data = []
-proxy_status = "stopped"
+# MongoDB connection with error handling
+try:
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+    client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+    # Test the connection
+    client.admin.command('ping')
+    db = client['WAF-AI']
+    logs = db['RequestLogs']
+    logger.info("✅ MongoDB connected successfully")
+except Exception as e:
+    logger.error(f"❌ MongoDB connection failed: {e}")
+    logger.warning("⚠️  Using mock data instead")
+    logs = None
 
-# Generate mock logs
-def generate_mock_logs():
-    global logs_data
-    attack_types = ['SQLi', 'XSS', 'CSRF', 'LFI', 'RCE', 'Normal']
-    methods = ['GET', 'POST', 'PUT', 'DELETE']
-    ips = ['192.168.1.100', '10.0.0.50', '203.0.113.25', '172.16.0.75', '198.51.100.10']
-    
-    for i in range(50):
-        timestamp = datetime.now() - timedelta(minutes=random.randint(1, 60))
-        attack_type = random.choice(attack_types)
-        is_malicious = attack_type != 'Normal'
-        
-        log = {
-            'id': i + 1,
-            'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            'ipAddress': random.choice(ips),
-            'url': f'https://example.com/{random.choice(["login", "api/users", "search", "products", "admin"])}',
-            'method': random.choice(methods),
-            'label': 'Malicious' if is_malicious else 'Safe',
-            'type': attack_type,
-            'status': 'Blocked' if is_malicious else 'Allowed'
-        }
-        logs_data.append(log)
+@app.route("/")
+def home():
+    return jsonify({"message": "WAF API Server is running", "status": "ok"})
 
-# Initialize mock data
-generate_mock_logs()
+@app.route("/ping")
+def ping():
+    return jsonify({"message": "pong", "status": "ok"})
 
-@app.route('/api/logs')
+@app.route("/api/logs")
 def get_logs():
-    """Get paginated logs"""
-    page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 10))
-    
-    start = (page - 1) * per_page
-    end = start + per_page
-    
-    return jsonify({
-        'logs': logs_data[start:end],
-        'total': len(logs_data),
-        'page': page,
-        'per_page': per_page
-    })
+    try:
+        if logs is None:
+            # Return mock data if MongoDB is not available
+            mock_logs = [
+                {
+                    "_id": "mock1",
+                    "timestamp": "2024-01-15T10:30:00Z",
+                    "ip_address": "192.168.1.100",
+                    "url": "http://example.com/test",
+                    "method": "GET",
+                    "is_malicious": False,
+                    "prediction": "allowed",
+                    "attack_type": "normal",
+                    "blocked": False,
+                    "label": "Safe",
+                    "type": "Normal",
+                    "status": "Allowed"
+                },
+                {
+                    "_id": "mock2", 
+                    "timestamp": "2024-01-15T10:31:00Z",
+                    "ip_address": "192.168.1.101",
+                    "url": "http://example.com/script?<script>alert('xss')</script>",
+                    "method": "POST",
+                    "is_malicious": True,
+                    "prediction": "blocked",
+                    "attack_type": "malicious",
+                    "blocked": True,
+                    "label": "Malicious",
+                    "type": "Malicious",
+                    "status": "Blocked"
+                }
+            ]
+            return jsonify({"logs": mock_logs})
+        
+        log_list = list(logs.find().sort('timestamp', -1).limit(100))
+        for log in log_list:
+            log['_id'] = str(log['_id'])
+        logger.info(f"📊 Retrieved {len(log_list)} logs from MongoDB")
+        return jsonify({"logs": log_list})
+    except Exception as e:
+        logger.error(f"Error fetching logs: {e}")
+        return jsonify({"logs": [], "error": str(e)})
 
-@app.route('/api/logs', methods=['DELETE'])
-def clear_logs():
-    """Clear all logs"""
-    global logs_data
-    logs_data = []
-    socketio.emit('logs_cleared', {'message': 'All logs cleared'})
-    return jsonify({'message': 'Logs cleared successfully'})
-
-@app.route('/api/logs/export')
-def export_logs():
-    """Export logs as CSV"""
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    # Write header
-    writer.writerow(['Timestamp', 'IP Address', 'URL', 'Method', 'Label', 'Type', 'Status'])
-    
-    # Write data
-    for log in logs_data:
-        writer.writerow([
-            log['timestamp'],
-            log['ipAddress'],
-            log['url'],
-            log['method'],
-            log['label'],
-            log['type'],
-            log['status']
-        ])
-    
-    output.seek(0)
-    return send_file(
-        io.BytesIO(output.getvalue().encode('utf-8')),
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name=f'waf-logs-{datetime.now().strftime("%Y%m%d-%H%M%S")}.csv'
-    )
-
-@app.route('/api/proxy/<action>', methods=['POST'])
-def proxy_control(action):
-    """Control proxy start/stop"""
-    global proxy_status
-    
-    if action == 'start':
-        proxy_status = 'running'
-        socketio.emit('proxy_status_changed', {'status': 'running'})
-        return jsonify({'message': 'Proxy started successfully', 'status': 'running'})
-    elif action == 'stop':
-        proxy_status = 'stopped'
-        socketio.emit('proxy_status_changed', {'status': 'stopped'})
-        return jsonify({'message': 'Proxy stopped successfully', 'status': 'stopped'})
-    else:
-        return jsonify({'error': 'Invalid action'}), 400
-
-@app.route('/api/stats')
+@app.route("/api/stats")
 def get_stats():
-    """Get attack statistics"""
-    total_requests = len(logs_data)
-    malicious_count = len([log for log in logs_data if log['label'] == 'Malicious'])
-    safe_count = total_requests - malicious_count
-    
-    # Attack type distribution
-    attack_types = {}
-    for log in logs_data:
-        attack_type = log['type']
-        attack_types[attack_type] = attack_types.get(attack_type, 0) + 1
-    
-    return jsonify({
-        'total_requests': total_requests,
-        'malicious_count': malicious_count,
-        'safe_count': safe_count,
-        'attack_types': attack_types,
-        'success_rate': ((safe_count / total_requests) * 100) if total_requests > 0 else 0
-    })
+    """
+    Get WAF statistics including total, malicious, and benign requests
+    """
+    try:
+        if logs is None:
+            # Return mock stats if MongoDB is not available
+            mock_stats = {
+                "total_requests": 150,
+                "malicious_requests": 25,
+                "benign_requests": 125,
+                "blocked_requests": 25,
+                "allowed_requests": 125,
+                "attack_types": {
+                    "XSS": 10,
+                    "SQL Injection": 8,
+                    "Path Traversal": 5,
+                    "Command Injection": 2
+                },
+                "recent_activity": {
+                    "last_hour": 15,
+                    "last_24_hours": 45,
+                    "last_7_days": 150
+                }
+            }
+            return jsonify(mock_stats)
+        
+        # Get real stats from MongoDB
+        total_requests = logs.count_documents({})
+        malicious_requests = logs.count_documents({"is_malicious": True})
+        benign_requests = logs.count_documents({"is_malicious": False})
+        blocked_requests = logs.count_documents({"blocked": True})
+        allowed_requests = logs.count_documents({"blocked": False})
+        
+        # Get attack type distribution
+        attack_types = {}
+        attack_type_pipeline = [
+            {"$match": {"is_malicious": True}},
+            {"$group": {"_id": "$attack_type", "count": {"$sum": 1}}}
+        ]
+        attack_type_results = list(logs.aggregate(attack_type_pipeline))
+        for result in attack_type_results:
+            attack_types[result['_id']] = result['count']
+        
+        # Get recent activity
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        last_hour = logs.count_documents({"timestamp": {"$gte": now - timedelta(hours=1)}})
+        last_24_hours = logs.count_documents({"timestamp": {"$gte": now - timedelta(days=1)}})
+        last_7_days = logs.count_documents({"timestamp": {"$gte": now - timedelta(days=7)}})
+        
+        stats = {
+            "total_requests": total_requests,
+            "malicious_requests": malicious_requests,
+            "benign_requests": benign_requests,
+            "blocked_requests": blocked_requests,
+            "allowed_requests": allowed_requests,
+            "attack_types": attack_types,
+            "recent_activity": {
+                "last_hour": last_hour,
+                "last_24_hours": last_24_hours,
+                "last_7_days": last_7_days
+            }
+        }
+        
+        logger.info(f"📈 Stats: Total={total_requests}, Malicious={malicious_requests}, Benign={benign_requests}")
+        return jsonify(stats)
+        
+    except Exception as e:
+        logger.error(f"Error fetching stats: {e}")
+        return jsonify({
+            "error": str(e),
+            "total_requests": 0,
+            "malicious_requests": 0,
+            "benign_requests": 0,
+            "blocked_requests": 0,
+            "allowed_requests": 0,
+            "attack_types": {},
+            "recent_activity": {"last_hour": 0, "last_24_hours": 0, "last_7_days": 0}
+        })
 
-@app.route('/api/status')
-def get_status():
-    """Get system status"""
-    return jsonify({
-        'proxy_status': proxy_status,
-        'database': 'connected',
-        'ai_model': 'loaded',
-        'cache': 'active'
-    })
-
-# Socket.IO events
 @socketio.on('connect')
 def handle_connect():
-    print('Client connected')
-    emit('connected', {'message': 'Connected to WAF Dashboard'})
+    logger.info('Client connected to SocketIO')
+    socketio.emit('status', {'message': 'Connected to WAF API'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print('Client disconnected')
+    logger.info('Client disconnected from SocketIO')
 
-def add_new_log():
-    """Simulate adding new logs periodically"""
-    global logs_data
-    
-    attack_types = ['SQLi', 'XSS', 'CSRF', 'LFI', 'RCE', 'Normal']
-    methods = ['GET', 'POST', 'PUT', 'DELETE']
-    ips = ['192.168.1.100', '10.0.0.50', '203.0.113.25', '172.16.0.75', '198.51.100.10']
-    
-    attack_type = random.choice(attack_types)
-    is_malicious = attack_type != 'Normal'
-    
-    new_log = {
-        'id': len(logs_data) + 1,
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'ipAddress': random.choice(ips),
-        'url': f'https://example.com/{random.choice(["login", "api/users", "search", "products", "admin"])}',
-        'method': random.choice(methods),
-        'label': 'Malicious' if is_malicious else 'Safe',
-        'type': attack_type,
-        'status': 'Blocked' if is_malicious else 'Allowed'
-    }
-    
-    logs_data.append(new_log)
-    
-    # Emit to all connected clients
-    socketio.emit('new_log', new_log)
-    
-    # Keep only last 1000 logs
-    if len(logs_data) > 1000:
-        logs_data.pop(0)
-
-if __name__ == '__main__':
-    # Start periodic log generation
-    import threading
-    import time
-    
-    def generate_logs_periodically():
-        while True:
-            time.sleep(5)  # Add new log every 5 seconds
-            add_new_log()
-    
-    log_thread = threading.Thread(target=generate_logs_periodically, daemon=True)
-    log_thread.start()
-    
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True) 
+if __name__ == "__main__":
+    logger.info("🚀 Starting WAF API Server...")
+    logger.info("📡 WebSocket server will be available on ws://localhost:5000")
+    logger.info("🌐 HTTP API will be available on http://localhost:5000")
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
